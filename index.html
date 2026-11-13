@@ -117,11 +117,12 @@ textarea{min-height:110px;resize:vertical}
     });
   }
   function load(){
-    return Promise.all([api('rifa_config?select=data&id=eq.1'), api('rifa_numeros?select=numero,nombre,estado')]).then(function(res){
+    return Promise.all([api('rifa_config?select=data&id=eq.1'), api('rifa_numeros?select=numero,estado'), clave ? api('rpc/rifa_nombres', {p_clave:clave}).catch(function(){ return null; }) : null]).then(function(res){
       var d = res[0] && res[0][0] ? res[0][0].data : null, i, r;
       if (d && d.cfg){ S.cfg = d.cfg; S.ganador = d.ganador || ''; }
       S.nums = {};
-      for (i = 0; i < res[1].length; i++){ r = res[1][i]; S.nums[r.numero] = {n:r.nombre, s:r.estado}; }
+      for (i = 0; i < res[1].length; i++){ r = res[1][i]; S.nums[r.numero] = {n:'', s:r.estado}; }
+      if (res[2]){ for (i = 0; i < res[2].length; i++){ r = res[2][i]; if (S.nums[r.numero]) S.nums[r.numero].n = r.nombre; } }
       loaded = true; failed = false;
       document.title = S.cfg.titulo || 'Tablero de la rifa';
       if (!sheet || sheet.t === 'num' && !admin) render();
@@ -173,7 +174,7 @@ textarea{min-height:110px;resize:vertical}
       var paid = st.p * c.precio, hold = st.h * c.precio, rows = '', keys = Object.keys(S.nums).sort();
       for (i = 0; i < keys.length; i++){ e = S.nums[keys[i]]; rows += '<div><b>' + keys[i] + '</b><span>' + esc(e.n || 'Sin nombre') + '</span><em>' + (e.s === 'p' ? 'PAGADO' : 'APARTADO') + '</em></div>'; }
       h += '<section class="card"><h2>Solo para ti: cuentas</h2><div class="money"><div><span class="k">Recibido</span><div class="v big">$' + money.format(paid) + '</div></div><div><span class="k">Por cobrar</span><div class="v big">$' + money.format(hold) + '</div></div></div>' +
-        '<p class="muted">Esta sección solo aparece en modo organizador, pero los nombres que escribas sí los ve quien toque un número.</p>' +
+        '<p class="muted">Esta sección y los nombres solo los ves tú. Los demás solo ven si el número está libre, apartado o pagado.</p>' +
         (rows ? '<div class="list">' + rows + '</div>' : '<p class="muted">Aún no hay números tomados.</p>') +
         '<div class="row"><button type="button" class="btn" data-act="cfg">Editar datos de la rifa</button><button type="button" class="btn" data-act="copy">Copiar mensaje para WhatsApp</button></div>' +
         '<div class="row"><button type="button" class="btn" data-act="win">Registrar número ganador</button><button type="button" class="btn" data-act="exit">Salir del modo organizador</button></div>' +
@@ -261,10 +262,10 @@ textarea{min-height:110px;resize:vertical}
       busy = true; render();
       api('rpc/rifa_entrar', {p_clave:w}).then(function(){
         clave = w; admin = true; try { localStorage.setItem('rifa_clave', w); } catch (e2) {}
-        busy = false; sheet = null; note = ''; render();
+        busy = false; sheet = null; note = ''; render(); load().then(render);
       }).catch(function(err){ fail(err); });
     }
-    else if (a === 'exit'){ admin = false; clave = ''; note = ''; try { localStorage.removeItem('rifa_clave'); } catch (e3) {} render(); }
+    else if (a === 'exit'){ admin = false; clave = ''; note = ''; for (w in S.nums) S.nums[w].n = ''; try { localStorage.removeItem('rifa_clave'); } catch (e3) {} render(); }
     else if (a === 'cfg'){ sheet = {t:'cfg'}; render(); }
     else if (a === 'win'){ sheet = {t:'win'}; render(); }
     else if (a === 'savenum'){
