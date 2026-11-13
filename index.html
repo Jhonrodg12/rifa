@@ -82,7 +82,7 @@ p{margin:0}
 .list em{margin-left:auto;font-style:normal;font-size:12px;font-weight:700;color:var(--muted)}
 .money{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 label{font-size:13px;font-weight:700;display:flex;flex-direction:column;gap:4px}
-input[type=text],textarea{font:500 16px var(--body);padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);width:100%}
+input[type=text],input[type=date],textarea{font:500 16px var(--body);padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);width:100%}
 textarea{min-height:110px;resize:vertical}
 .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .seg button{font:700 14px var(--body);padding:10px 4px;border-radius:10px;border:1.5px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer}
@@ -144,6 +144,23 @@ textarea{min-height:110px;resize:vertical}
     if (d.length === 10) d = '57' + d;
     return 'https://wa.me/' + d + '?text=' + encodeURIComponent(text);
   }
+  function hoy(){ var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function fechaObj(f){ var p = f.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function fechaTexto(f){ try { return fechaObj(f).toLocaleDateString('es-CO', {weekday:'long', day:'numeric', month:'long'}); } catch (e) { return f; } }
+  function compacta(d){ return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()); }
+  function recordatorio(n, f){
+    var a = fechaObj(f), b = fechaObj(f); b.setDate(b.getDate() + 1);
+    return {ini:compacta(a), fin:compacta(b), titulo:'Pagar el número ' + n + ' de la rifa', detalle:'Valor: $' + money.format(S.cfg.precio) + '. ' + (S.cfg.pago || '') + ' Tablero: ' + location.href.split('#')[0]};
+  }
+  function gcalLink(n, f){
+    var r = recordatorio(n, f);
+    return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(r.titulo) + '&dates=' + r.ini + '/' + r.fin + '&details=' + encodeURIComponent(r.detalle);
+  }
+  function icsLink(n, f){
+    var r = recordatorio(n, f), q = function(t){ return String(t).replace(/([\\,;])/g, '\\$1').replace(/\n/g, ' '); };
+    var ics = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Rifa//ES','BEGIN:VEVENT','UID:rifa-' + n + '-' + r.ini + '@rifa','DTSTAMP:' + r.ini + 'T120000Z','DTSTART;VALUE=DATE:' + r.ini,'DTEND;VALUE=DATE:' + r.fin,'SUMMARY:' + q(r.titulo),'DESCRIPTION:' + q(r.detalle),'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:' + q(r.titulo),'TRIGGER;RELATED=START:PT9H','END:VALARM','END:VEVENT','END:VCALENDAR'].join('\r\n');
+    return 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics);
+  }
   function freeList(){
     var out = [], i;
     for (i = 0; i < 100; i++){ if (!S.nums[pad(i)]) out.push(pad(i)); }
@@ -202,8 +219,11 @@ textarea{min-height:110px;resize:vertical}
       } else if (e){
         h += '<p>' + (e.s === 'p' ? 'Ya está pagado' : 'Está apartado') + (e.n ? ' por ' + esc(e.n) : '') + '.</p><div class="row"><button type="button" class="btn" data-act="close">Ver otros números</button></div>';
       } else {
-        link = waLink('Hola, quiero el número ' + sheet.n + ' de la rifa "' + S.cfg.titulo + '".');
+        var fd = sheet.fecha || '', ft = fd ? fechaTexto(fd) : '';
+        link = waLink('Hola, quiero el número ' + sheet.n + ' de la rifa "' + S.cfg.titulo + '".' + (ft ? ' Puedo pagar el ' + ft + '.' : ''));
         h += '<p>Está libre. Vale $' + money.format(S.cfg.precio) + '.</p>' +
+          '<label for="b-fecha">¿Qué día puedes pagar?<input type="date" id="b-fecha" min="' + hoy() + '" value="' + esc(fd) + '"></label>' +
+          (fd ? '<p class="muted">Guarda un recordatorio para el ' + esc(ft) + ':</p><div class="row"><a class="btn" href="' + esc(gcalLink(sheet.n, fd)) + '" target="_blank" rel="noopener">Google Calendar</a><a class="btn" href="' + esc(icsLink(sheet.n, fd)) + '" download="pago-rifa-' + sheet.n + '.ics">Calendario del iPhone</a></div>' : '') +
           (link ? '<div class="row"><a class="btn accent" href="' + esc(link) + '" target="_blank" rel="noopener">Pedirlo por WhatsApp</a></div>' : '<p class="muted">Escríbele a ' + esc(S.cfg.organizador) + ' para apartarlo.</p>') +
           '<div class="row"><button type="button" class="btn" data-act="close">Ver otros números</button></div>';
       }
@@ -292,6 +312,9 @@ textarea{min-height:110px;resize:vertical}
       try { navigator.clipboard.writeText(txt).then(function(){ note = 'Mensaje copiado. Pégalo en WhatsApp.'; render(); }, function(){ note = 'No se pudo copiar desde aquí.'; render(); }); }
       catch (err2){ note = 'No se pudo copiar desde aquí.'; render(); }
     }
+  });
+  root.addEventListener('change', function(ev){
+    if (ev.target.id === 'b-fecha' && sheet && sheet.t === 'num'){ sheet.fecha = ev.target.value; render(); }
   });
   render();
   load();
