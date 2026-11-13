@@ -150,7 +150,7 @@ textarea{min-height:110px;resize:vertical}
         (failed ? '<p class="muted">Revisa tu conexión a internet y vuelve a intentar.</p><div class="row"><button type="button" class="btn primary" data-act="retry">Reintentar</button></div>' : '') + '</section>';
       return;
     }
-    h += '<section class="ticket"><div class="ticket-top"><span class="eyebrow">Rifa organizada por ' + esc(c.organizador) + '</span><h1>' + esc(c.titulo) + '</h1><p class="prize">' + esc(c.premio) + '</p></div>' +
+    h += '<section class="ticket"><div class="ticket-top"><span class="eyebrow">Rifa organizada por ' + esc(c.organizador) + '</span><h1>' + esc(c.titulo) + '</h1><p class="prize">' + esc(c.premio) + '</p>' + (/^https:\/\//.test(c.video || '') ? '<div class="row"><a class="btn accent" href="' + esc(c.video) + '" target="_blank" rel="noopener">Ver video del premio</a></div>' : '') + '</div>' +
       '<div class="tear"><div><span class="k">Valor del número</span><span class="v big">$' + money.format(c.precio) + '</span></div><div><span class="k">Juega</span><span class="v">' + esc(c.fecha) + '</span></div></div>' +
       '<div class="tear" style="grid-template-columns:1fr"><div><span class="k">Con</span><span class="v">' + esc(c.loteria) + '</span></div></div></section>';
     if (S.ganador){
@@ -209,6 +209,7 @@ textarea{min-height:110px;resize:vertical}
       h += '<h2>Datos de la rifa</h2>' +
         '<label for="c-titulo">Título<input type="text" id="c-titulo" value="' + esc(c.titulo) + '"></label>' +
         '<label for="c-premio">Premio<input type="text" id="c-premio" value="' + esc(c.premio) + '"></label>' +
+        '<label for="c-video">Enlace del video del premio (opcional)<input type="text" inputmode="url" id="c-video" value="' + esc(c.video || '') + '"></label>' +
         '<label for="c-precio">Valor de cada número (solo cifras)<input type="text" inputmode="numeric" id="c-precio" value="' + esc(c.precio) + '"></label>' +
         '<label for="c-loteria">Con qué lotería juega<input type="text" id="c-loteria" value="' + esc(c.loteria) + '"></label>' +
         '<label for="c-fecha">Fecha del sorteo<input type="text" id="c-fecha" value="' + esc(c.fecha) + '"></label>' +
@@ -271,8 +272,8 @@ textarea{min-height:110px;resize:vertical}
       api('rpc/rifa_guardar_numero', {p_clave:clave, p_numero:sheet.n, p_nombre:sheet.name, p_estado:sheet.s}).then(function(){ return done(''); }).catch(function(err){ fail(err); });
     }
     else if (a === 'savecfg'){
-      f = keep(['c-titulo','c-premio','c-precio','c-loteria','c-fecha','c-organizador','c-whatsapp','c-pago','c-reglas']);
-      c = {titulo:f['c-titulo'] || S.cfg.titulo, premio:f['c-premio'], loteria:f['c-loteria'], fecha:f['c-fecha'], organizador:f['c-organizador'], whatsapp:f['c-whatsapp'], pago:f['c-pago'], reglas:f['c-reglas'],
+      f = keep(['c-titulo','c-premio','c-precio','c-loteria','c-fecha','c-organizador','c-whatsapp','c-pago','c-reglas','c-video']);
+      c = {titulo:f['c-titulo'] || S.cfg.titulo, premio:f['c-premio'], loteria:f['c-loteria'], fecha:f['c-fecha'], organizador:f['c-organizador'], whatsapp:f['c-whatsapp'], pago:f['c-pago'], reglas:f['c-reglas'], video:f['c-video'],
         precio:parseInt(f['c-precio'].replace(/\D/g, ''), 10) || S.cfg.precio};
       saveCfg(c, S.ganador, f);
     }
